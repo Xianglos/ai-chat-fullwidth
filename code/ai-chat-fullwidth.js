@@ -1,12 +1,11 @@
 // ==UserScript==
-// @name         人工智能网页宽屏拉满（支持DeepSeek、豆包、Copilot）
+// @name         人工智能网页宽屏拉满（支持DeepSeek、豆包）
 // @namespace    http://tampermonkey.net/
 // @version      2025-10-25
-// @description  为DeepSeek、DouBao和Microsoft Copilot等AI聊天网站提供宽屏适配，移除宽度限制
+// @description  为DeepSeek和DouBao等AI聊天网站提供宽屏适配，移除宽度限制
 // @author       Xianglos
 // @match        https://chat.deepseek.com/*
 // @match        https://www.doubao.com/chat/*
-// @match        https://copilot.microsoft.com/chats
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=deepseek.com
 // @grant        none
 // @run-at       document-start
@@ -56,43 +55,6 @@
                     `
                 }
             ]
-        },
-        'copilot.microsoft.com': {
-            name: 'Microsoft Copilot',
-            actions: [
-                {
-                    type: 'modify-css-rule',
-                    rules: [
-                        {
-                            selector: '.max-w-chat',
-                            modifications: { 'max-width': '100%' }
-                        },
-                        {
-                            selector: '.items-center',
-                            modifications: { 'align-items': '' }
-                        },
-                        {
-                            selector: '.w-expanded-composer',
-                            modifications: { 'width': '' }
-                        }
-                    ]
-                },
-                {
-                    type: 'inject-style',
-                    css: `
-                        .max-w-chat {
-                            max-width: 100% !important;
-                        }
-                        .items-center {
-                            align-items: unset !important;
-                        }
-                        .w-expanded-composer {
-                            width: auto !important;
-                            min-width: 100% !important;
-                        }
-                    `
-                }
-            ]
         }
     };
 
@@ -105,39 +67,6 @@
             }
         }
         return null;
-    }
-
-    // 修改CSS规则
-    function modifyCSSRuleAction(action) {
-        const styleSheets = document.styleSheets;
-        let modifiedCount = 0;
-        
-        for (let sheet of styleSheets) {
-            try {
-                const rules = sheet.cssRules || sheet.rules;
-                for (let rule of rules) {
-                    if (rule.selectorText) {
-                        action.rules.forEach(targetRule => {
-                            if (rule.selectorText.includes(targetRule.selector)) {
-                                Object.keys(targetRule.modifications).forEach(property => {
-                                    if (rule.style[property] !== undefined) {
-                                        rule.style[property] = targetRule.modifications[property];
-                                        modifiedCount++;
-                                        console.log(`已修改 ${targetRule.selector} 的 ${property} 为: ${targetRule.modifications[property]}`);
-                                    }
-                                });
-                            }
-                        });
-                    }
-                }
-            } catch (e) {
-                // 忽略跨域限制错误
-            }
-        }
-        
-        if (modifiedCount === 0) {
-            console.log('未找到需要修改的CSS规则，将使用注入样式方式');
-        }
     }
 
     // 执行网站特定的适配操作
@@ -157,9 +86,6 @@
                     break;
                 case 'inject-style':
                     injectStyleAction(action);
-                    break;
-                case 'modify-css-rule':
-                    modifyCSSRuleAction(action);
                     break;
             }
         });
@@ -242,27 +168,6 @@
             childList: true,
             subtree: true
         });
-
-        // 特别为Copilot监听样式表加载
-        if (config.name === 'Microsoft Copilot') {
-            const styleObserver = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === 'childList') {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.nodeName === 'LINK' && node.rel === 'stylesheet') {
-                                console.log('检测到新样式表加载，重新应用Copilot适配');
-                                setTimeout(applySiteAdaptation, 300);
-                            }
-                        });
-                    }
-                });
-            });
-
-            styleObserver.observe(document.head, {
-                childList: true,
-                subtree: false
-            });
-        }
 
         // 监听URL变化（针对单页应用）
         let currentURL = window.location.href;
